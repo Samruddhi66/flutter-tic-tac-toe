@@ -34,9 +34,17 @@ Material 3. Play with a friend on one device, or take on the computer.
 - Local two-player mode and a computer opponent with Easy and Hard levels
 - Unbeatable minimax computer on Hard
 - Player names, a configurable number of matches, and scores under each name
-- Win detection with the winning line highlighted, and draw detection
 - Final match result declared only after every match is played
+- Sound effects for moves, round wins and the final result, with a mute button
+- Animations: marks pop in, the winning line pulses, scores and messages animate
 - Light and dark theme support
+
+## Sound and animation notes
+
+The web build synthesises its tones with the Web Audio API, so nothing extra has
+to be downloaded. On mobile and desktop the game uses the system click sound and
+haptic feedback. Both are wrapped in `lib/sound/` and can be muted from the
+speaker button in the top bar.
 
 ## Project structure
 
@@ -44,6 +52,7 @@ Material 3. Play with a friend on one device, or take on the computer.
 lib/
   main.dart          # Setup screen, game screen and scoreboard
   game_logic.dart    # Rules for a round, a match and the computer opponent
+  sound/             # Tiny cross-platform sound effects (web, mobile, stub)
 test/
   game_logic_test.dart  # Rules, match scoring and AI tests
   widget_test.dart      # Setup, a full match and a game against the computer
