@@ -1,6 +1,6 @@
 # Tic Tac Toe (Flutter)
 
-A clean, two-player Tic Tac Toe game for Android, iOS, web and desktop, built
+A clean two-player Tic Tac Toe game for Android, iOS, web and desktop, built
 with Flutter and Material 3.
 
 **Play it in the browser:** https://samruddhi66.github.io/flutter-tic-tac-toe/
@@ -8,31 +8,43 @@ with Flutter and Material 3.
 The web version is built by GitHub Actions and published to GitHub Pages on every
 push to `main`.
 
+## How a match works
+
+1. Before the game starts, enter both player names and choose how many matches
+   (rounds) to play, from 1 to 15.
+2. The board shows each player's name with their score underneath it, plus a
+   running count of drawn matches.
+3. Every match is played out, even if one player is already ahead. X starts each
+   round and the winning line is highlighted.
+4. After the last match the final result is declared: for example
+   "Sam wins the match 2–1", or "Match drawn 1–1".
+5. "Play again" replays with the same names and match count; "Change players"
+   goes back to the setup screen.
+
 ## Features
 
-- Local two-player game on one device, X always starts
-- Win detection with the winning line highlighted
-- Draw detection
-- Scoreboard for X, O and draws that survives rounds
-- "Play again" / "Restart round" and "Reset score"
+- Player names and a configurable number of matches before the game starts
+- Scores shown under each player's name
+- Win detection with the winning line highlighted, and draw detection
+- Final match result declared only after every match is played
 - Light and dark theme support
 
 ## Project structure
 
 ```
 lib/
-  main.dart          # App shell and the game screen
-  game_logic.dart    # Pure Dart rules, no Flutter imports
+  main.dart          # Setup screen, game screen and scoreboard
+  game_logic.dart    # Pure Dart rules for a round and for a match
 test/
-  game_logic_test.dart  # Rules unit tests
-  widget_test.dart      # Plays a full round through the UI
+  game_logic_test.dart  # Rules and match scoring tests
+  widget_test.dart      # Plays through setup and a full match
 .github/workflows/
   deploy-web.yml     # Builds the web game and deploys it to GitHub Pages
 ```
 
 ## Running it
 
-Install the [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.50 or
+Install the [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.27 or
 newer).
 
 This repository contains the Dart source and configuration; the per-platform
