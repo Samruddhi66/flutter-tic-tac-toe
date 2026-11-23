@@ -2,30 +2,38 @@
 
 ### ▶ [Play the game live in your browser](https://samruddhi66.github.io/flutter-tic-tac-toe/)
 
-No install needed — open the link, enter both player names, choose how many
-matches to play and start. The web version is built by GitHub Actions and
-published to GitHub Pages on every push to `main`.
+No install needed — open the link, pick a mode and start playing. The web version
+is built by GitHub Actions and published to GitHub Pages on every push to
+`main`.
 
-A clean, two-player Tic Tac Toe game for Android, iOS, web and desktop, built
-with Flutter and Material 3.
+A clean Tic Tac Toe game for Android, iOS, web and desktop, built with Flutter and
+Material 3. Play with a friend on one device, or take on the computer.
+
+## Game modes
+
+- **2 players** — both players enter their names and share the device.
+- **vs Computer** — you play X against the computer as O, and you pick the level:
+  - **Easy** — the computer picks random empty cells.
+  - **Hard** — the computer plays perfectly, so the best you can get is a draw.
 
 ## How a match works
 
-1. Before the game starts, enter both player names and choose how many matches
+1. Choose the mode (and difficulty), enter the names and pick how many matches
    (rounds) to play, from 1 to 15.
-2. The board shows each player's name with their score underneath it, plus a
-   running count of drawn matches.
+2. Each player's score is shown under their name, plus a running count of drawn
+   matches.
 3. Every match is played out, even if one player is already ahead. X starts each
    round and the winning line is highlighted.
 4. After the last match the final result is declared: for example
    "Sam wins the match 2–1", or "Match drawn 1–1".
-5. "Play again" replays with the same names and match count; "Change players"
-   goes back to the setup screen.
+5. "Play again" replays with the same settings; "Change players" goes back to
+   the setup screen.
 
 ## Features
 
-- Player names and a configurable number of matches before the game starts
-- Scores shown under each player's name
+- Local two-player mode and a computer opponent with Easy and Hard levels
+- Unbeatable minimax computer on Hard
+- Player names, a configurable number of matches, and scores under each name
 - Win detection with the winning line highlighted, and draw detection
 - Final match result declared only after every match is played
 - Light and dark theme support
@@ -35,10 +43,10 @@ with Flutter and Material 3.
 ```
 lib/
   main.dart          # Setup screen, game screen and scoreboard
-  game_logic.dart    # Pure Dart rules for a round and for a match
+  game_logic.dart    # Rules for a round, a match and the computer opponent
 test/
-  game_logic_test.dart  # Rules and match scoring tests
-  widget_test.dart      # Plays through setup and a full match
+  game_logic_test.dart  # Rules, match scoring and AI tests
+  widget_test.dart      # Setup, a full match and a game against the computer
 .github/workflows/
   deploy-web.yml     # Builds the web game and deploys it to GitHub Pages
 ```

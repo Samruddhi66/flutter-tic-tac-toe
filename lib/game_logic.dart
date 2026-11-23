@@ -1,6 +1,9 @@
-/// Pure Dart rules for Tic Tac Toe and for a multi-round match, kept free of
-/// Flutter imports so the logic can be unit tested on its own.
+/// Pure Dart rules for Tic Tac Toe, a multi-round match and the computer
+/// opponent, kept free of Flutter imports so the logic can be unit tested on
+/// its own.
 library;
+
+import 'dart:math';
 
 /// The two players. X always moves first in a round.
 enum Player { x, o }
@@ -10,6 +13,15 @@ enum GameStatus { playing, won, draw }
 
 /// How a whole match ended.
 enum MatchOutcome { inProgress, xWon, oWon, draw }
+
+/// How strong the computer opponent plays.
+enum Difficulty {
+  /// Picks a random empty cell.
+  easy,
+
+  /// Plays perfectly: it never loses a round.
+  hard,
+}
 
 /// The eight lines that win a 3x3 round.
 const List<List<int>> winningLines = <List<int>>[
@@ -214,5 +226,88 @@ class Match {
     if (isOver) return false;
     round.restart();
     return true;
+  }
+}
+
+/// Picks moves for the computer player.
+class ComputerOpponent {
+  ComputerOpponent({
+    this.mark = Player.o,
+    this.difficulty = Difficulty.hard,
+    Random? random,
+  }) : _random = random ?? Random();
+
+  /// The mark the computer plays.
+  final Player mark;
+
+  /// How strong the computer plays.
+  final Difficulty difficulty;
+
+  final Random _random;
+
+  /// The mark of the human player.
+  Player get opponent => mark == Player.x ? Player.o : Player.x;
+
+  /// Whether it is the computer's turn in [round].
+  bool isTurn(TicTacToe round) => round.isPlaying && round.currentPlayer == mark;
+
+  /// Chooses a cell for this player, or `null` when no move is possible.
+  int? chooseMove(TicTacToe round) {
+    final List<int> moves = <int>[
+      for (int i = 0; i < 9; i++)
+        if (round.canPlay(i)) i,
+    ];
+    if (moves.isEmpty) return null;
+    if (difficulty == Difficulty.easy) {
+      return moves[_random.nextInt(moves.length)];
+    }
+    return _bestMove(round.board);
+  }
+
+  int? _bestMove(List<Player?> board) {
+    int? bestMove;
+    int bestScore = -1000;
+
+    for (int i = 0; i < 9; i++) {
+      if (board[i] != null) continue;
+      final List<Player?> trial = List<Player?>.of(board);
+      trial[i] = mark;
+      final int score = _minimax(trial, opponent, 1);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = i;
+      }
+    }
+    return bestMove;
+  }
+
+  /// Scores [board] for this player: high when the computer wins, low when the
+  /// human does. Faster wins and slower losses score better.
+  int _minimax(List<Player?> board, Player turn, int depth) {
+    final Player? winner = _winnerOf(board);
+    if (winner == mark) return 10 - depth;
+    if (winner == opponent) return depth - 10;
+    if (!board.contains(null)) return 0;
+
+    int best = turn == mark ? -1000 : 1000;
+    for (int i = 0; i < 9; i++) {
+      if (board[i] != null) continue;
+      board[i] = turn;
+      final int score =
+          _minimax(board, turn == Player.x ? Player.o : Player.x, depth + 1);
+      board[i] = null;
+      best = turn == mark ? max(best, score) : min(best, score);
+    }
+    return best;
+  }
+
+  Player? _winnerOf(List<Player?> board) {
+    for (final List<int> line in winningLines) {
+      final Player? first = board[line[0]];
+      if (first != null && board[line[1]] == first && board[line[2]] == first) {
+        return first;
+      }
+    }
+    return null;
   }
 }
