@@ -52,4 +52,43 @@ void main() {
     expect(find.text("Sam's turn"), findsOneWidget);
     expect(find.text('0'), findsWidgets);
   });
+
+  testWidgets('one player can play against the computer on hard',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const TicTacToeApp());
+
+    await tester.tap(find.text('vs Computer'));
+    await tester.pumpAndSettle();
+
+    // The second name field is replaced by the difficulty choice.
+    expect(find.byKey(const ValueKey<String>('o-name-field')), findsNothing);
+    await tester.tap(find.text('Hard'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('x-name-field')),
+      'Sam',
+    );
+    await tester.tap(find.text('Start game'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Computer'), findsOneWidget);
+    expect(find.textContaining('Hard'), findsOneWidget);
+    expect(find.text("Sam's turn"), findsOneWidget);
+
+    // Sam takes the centre, so the computer has to answer.
+    await tester.tap(find.byKey(const ValueKey<String>('cell-4')));
+    await tester.pump();
+    expect(find.text('Computer is thinking…'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Sam's turn"), findsOneWidget);
+    expect(find.text('Computer is thinking…'), findsNothing);
+  });
 }

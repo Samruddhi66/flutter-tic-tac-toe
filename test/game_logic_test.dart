@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tic_tac_toe/game_logic.dart';
 
@@ -200,6 +202,93 @@ void main() {
       expect(next.xScore, 0);
       expect(next.playedRounds, 0);
       expect(next.totalRounds, first.totalRounds);
+    });
+  });
+
+  group('ComputerOpponent', () {
+    test('easy difficulty returns a legal move', () {
+      final TicTacToe round = TicTacToe();
+      round.play(0);
+      round.play(4);
+
+      final ComputerOpponent computer = ComputerOpponent(
+        difficulty: Difficulty.easy,
+        random: Random(7),
+      );
+
+      for (int i = 0; i < 25; i++) {
+        final int? move = computer.chooseMove(round);
+        expect(move, isNotNull);
+        expect(round.canPlay(move!), isTrue);
+      }
+    });
+
+    test('hard difficulty takes an immediate win', () {
+      final TicTacToe round = TicTacToe();
+      round.play(0); // X
+      round.play(2); // O
+      round.play(1); // X
+      round.play(4); // O
+      round.play(8); // X
+
+      final ComputerOpponent computer = ComputerOpponent(
+        difficulty: Difficulty.hard,
+      );
+
+      expect(computer.isTurn(round), isTrue);
+      expect(computer.chooseMove(round), 6);
+    });
+
+    test('hard difficulty blocks the human win', () {
+      final TicTacToe round = TicTacToe();
+      round.play(0); // X
+      round.play(4); // O
+      round.play(1); // X
+
+      final ComputerOpponent computer = ComputerOpponent(
+        difficulty: Difficulty.hard,
+      );
+
+      expect(computer.chooseMove(round), 2);
+    });
+
+    test('hard difficulty never loses, whatever the human opens with', () {
+      for (int opening = 0; opening < 9; opening++) {
+        final TicTacToe round = TicTacToe();
+        final ComputerOpponent computer = ComputerOpponent(
+          difficulty: Difficulty.hard,
+        );
+
+        round.play(opening); // human plays X
+        while (round.isPlaying) {
+          if (computer.isTurn(round)) {
+            round.play(computer.chooseMove(round)!);
+          } else {
+            final int move = <int>[
+              for (int i = 0; i < 9; i++)
+                if (round.canPlay(i)) i,
+            ].first;
+            round.play(move);
+          }
+        }
+
+        expect(round.winner, isNot(Player.x));
+      }
+    });
+
+    test('returns null once the round is finished', () {
+      final TicTacToe round = TicTacToe();
+
+      for (final int index in <int>[0, 3, 1, 4, 2]) {
+        round.play(index);
+      }
+
+      final ComputerOpponent computer = ComputerOpponent(
+        difficulty: Difficulty.hard,
+      );
+
+      expect(computer.isTurn(round), isFalse);
+      expect(computer.chooseMove(round), isNull);
     });
   });
 }

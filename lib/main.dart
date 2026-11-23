@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'game_logic.dart';
@@ -32,7 +34,8 @@ class TicTacToeApp extends StatelessWidget {
   }
 }
 
-/// Asks for both player names and the number of rounds before the match.
+/// Asks for the game mode, both player names, the difficulty and the number of
+/// rounds before the match.
 class SetupPage extends StatefulWidget {
   const SetupPage({super.key});
 
@@ -44,6 +47,8 @@ class _SetupPageState extends State<SetupPage> {
   final TextEditingController _xController = TextEditingController();
   final TextEditingController _oController = TextEditingController();
   int _rounds = 3;
+  bool _vsComputer = false;
+  Difficulty _difficulty = Difficulty.hard;
 
   @override
   void dispose() {
@@ -60,8 +65,12 @@ class _SetupPageState extends State<SetupPage> {
       MaterialPageRoute<void>(
         builder: (BuildContext context) => GamePage(
           xName: xName.isEmpty ? 'Player 1' : xName,
-          oName: oName.isEmpty ? 'Player 2' : oName,
+          oName: _vsComputer
+              ? 'Computer'
+              : (oName.isEmpty ? 'Player 2' : oName),
           totalRounds: _rounds,
+          vsComputer: _vsComputer,
+          difficulty: _difficulty,
         ),
       ),
     );
@@ -93,39 +102,68 @@ class _SetupPageState extends State<SetupPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Add both players and choose how many matches to play.',
+                    'Choose who you are playing, then start the match.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
+                  SegmentedButton<bool>(
+                    segments: const <ButtonSegment<bool>>[
+                      ButtonSegment<bool>(
+                        value: false,
+                        label: Text('2 players'),
+                        icon: Icon(Icons.people_outline),
+                      ),
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text('vs Computer'),
+                        icon: Icon(Icons.smart_toy_outlined),
+                      ),
+                    ],
+                    selected: <bool>{_vsComputer},
+                    onSelectionChanged: (Set<bool> selection) {
+                      setState(() => _vsComputer = selection.first);
+                    },
+                  ),
+                  const SizedBox(height: 24),
                   TextField(
                     key: const ValueKey<String>('x-name-field'),
                     controller: _xController,
                     textCapitalization: TextCapitalization.words,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Player 1 (X)',
-                      hintText: 'Player 1',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: _vsComputer ? 'Your name (X)' : 'Player 1 (X)',
+                      hintText: _vsComputer ? 'You' : 'Player 1',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    key: const ValueKey<String>('o-name-field'),
-                    controller: _oController,
-                    textCapitalization: TextCapitalization.words,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _startGame(),
-                    decoration: const InputDecoration(
-                      labelText: 'Player 2 (O)',
-                      hintText: 'Player 2',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
+                  if (!_vsComputer) ...<Widget>[
+                    const SizedBox(height: 16),
+                    TextField(
+                      key: const ValueKey<String>('o-name-field'),
+                      controller: _oController,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _startGame(),
+                      decoration: const InputDecoration(
+                        labelText: 'Player 2 (O)',
+                        hintText: 'Player 2',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                  ),
+                  ] else ...<Widget>[
+                    const SizedBox(height: 20),
+                    _DifficultyPicker(
+                      difficulty: _difficulty,
+                      onChanged: (Difficulty value) {
+                        setState(() => _difficulty = value);
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -205,24 +243,97 @@ class _SetupPageState extends State<SetupPage> {
   }
 }
 
+class _DifficultyPicker extends StatelessWidget {
+  const _DifficultyPicker({
+    required this.difficulty,
+    required this.onChanged,
+  });
+
+  final Difficulty difficulty;
+  final ValueChanged<Difficulty> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+    final bool hard = difficulty == Difficulty.hard;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        SegmentedButton<Difficulty>(
+          segments: const <ButtonSegment<Difficulty>>[
+            ButtonSegment<Difficulty>(
+              value: Difficulty.easy,
+              label: Text('Easy'),
+              icon: Icon(Icons.sentiment_satisfied_alt_outlined),
+            ),
+            ButtonSegment<Difficulty>(
+              value: Difficulty.hard,
+              label: Text('Hard'),
+              icon: Icon(Icons.local_fire_department_outlined),
+            ),
+          ],
+          selected: <Difficulty>{difficulty},
+          onSelectionChanged: (Set<Difficulty> selection) {
+            onChanged(selection.first);
+          },
+        ),
+        const SizedBox(height: 6),
+        Text(
+          hard
+              ? 'Hard plays perfectly — the best you can get is a draw.'
+              : 'Easy plays random moves.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class GamePage extends StatefulWidget {
   const GamePage({
     super.key,
     required this.xName,
     required this.oName,
     required this.totalRounds,
+    this.vsComputer = false,
+    this.difficulty = Difficulty.hard,
   });
 
   final String xName;
   final String oName;
   final int totalRounds;
+  final bool vsComputer;
+  final Difficulty difficulty;
 
   @override
   State<GamePage> createState() => _GamePageState();
 }
 
 class _GamePageState extends State<GamePage> {
-  late Match _match = _newMatch();
+  late Match _match;
+  late final ComputerOpponent? _computer;
+  Timer? _computerTimer;
+  bool _computerThinking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _match = _newMatch();
+    _computer = widget.vsComputer
+        ? ComputerOpponent(mark: Player.o, difficulty: widget.difficulty)
+        : null;
+  }
+
+  @override
+  void dispose() {
+    _computerTimer?.cancel();
+    super.dispose();
+  }
 
   Match _newMatch() => Match(
         xName: widget.xName,
@@ -230,12 +341,38 @@ class _GamePageState extends State<GamePage> {
         totalRounds: widget.totalRounds,
       );
 
+  bool get _isComputerTurn =>
+      _computer != null && !_match.isOver && _computer.isTurn(_match.round);
+
   void _play(int index) {
-    if (_match.play(index)) setState(() {});
+    if (_computerThinking || _isComputerTurn) return;
+    if (!_match.play(index)) return;
+    setState(() {});
+    _scheduleComputerMove();
+  }
+
+  void _scheduleComputerMove() {
+    final ComputerOpponent? computer = _computer;
+    if (computer == null || !computer.isTurn(_match.round) || _match.isOver) {
+      return;
+    }
+
+    setState(() => _computerThinking = true);
+    _computerTimer?.cancel();
+    _computerTimer = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted) return;
+      final int? move = computer.chooseMove(_match.round);
+      setState(() {
+        _computerThinking = false;
+        if (move != null) _match.play(move);
+      });
+    });
   }
 
   void _primaryAction() {
+    _computerTimer?.cancel();
     setState(() {
+      _computerThinking = false;
       if (_match.isOver) {
         _match = _newMatch();
       } else if (_match.isRoundOver) {
@@ -257,6 +394,7 @@ class _GamePageState extends State<GamePage> {
   String get _statusText {
     final TicTacToe round = _match.round;
     if (_match.isOver) return _match.resultText;
+    if (_computerThinking) return '${widget.oName} is thinking…';
     if (round.status == GameStatus.won) {
       return '${_match.nameFor(round.winner!)} wins round ${_match.playedRounds}';
     }
@@ -266,9 +404,15 @@ class _GamePageState extends State<GamePage> {
     return "${_match.nameFor(round.currentPlayer)}'s turn";
   }
 
-  String get _roundLabel => _match.isOver
-      ? 'Match complete'
-      : 'Round ${_match.roundNumber} of ${_match.totalRounds}';
+  String get _roundLabel {
+    if (_match.isOver) return 'Match complete';
+    final String base = 'Round ${_match.roundNumber} of ${_match.totalRounds}';
+    final ComputerOpponent? computer = _computer;
+    if (computer == null) return base;
+    final String level =
+        computer.difficulty == Difficulty.hard ? 'Hard' : 'Easy';
+    return '$base · $level';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -282,7 +426,10 @@ class _GamePageState extends State<GamePage> {
         actions: <Widget>[
           IconButton(
             tooltip: 'New match',
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              _computerTimer?.cancel();
+              Navigator.of(context).pop();
+            },
             icon: const Icon(Icons.group_outlined),
           ),
         ],
@@ -348,7 +495,10 @@ class _GamePageState extends State<GamePage> {
                   ),
                   const SizedBox(height: 8),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      _computerTimer?.cancel();
+                      Navigator.of(context).pop();
+                    },
                     child: const Text('Change players'),
                   ),
                 ],
@@ -382,7 +532,8 @@ class _GamePageState extends State<GamePage> {
     final TicTacToe round = _match.round;
     final Player? mark = round.board[index];
     final bool isWinning = round.winningLine?.contains(index) ?? false;
-    final bool playable = _match.canPlay(index);
+    final bool playable =
+        _match.canPlay(index) && !_computerThinking && !_isComputerTurn;
 
     final Color background = isWinning ? colors.primaryContainer : colors.surface;
     final Color markColor = isWinning
