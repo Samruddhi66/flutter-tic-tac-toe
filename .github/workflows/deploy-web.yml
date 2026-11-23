@@ -30,6 +30,11 @@ jobs:
           flutter create --project-name tic_tac_toe --platforms=web /tmp/webapp
           cp -R /tmp/webapp/web .
 
+      - name: Set the page title
+        run: |
+          sed -i 's|<title>tic_tac_toe</title>|<title>Tic Tac Toe</title>|' web/index.html
+          sed -i 's|"name": "tic_tac_toe"|"name": "Tic Tac Toe"|; s|"short_name": "tic_tac_toe"|"short_name": "Tic Tac Toe"|' web/manifest.json
+
       - name: Install dependencies
         run: flutter pub get
 
