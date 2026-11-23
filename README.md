@@ -3,6 +3,11 @@
 A clean, two-player Tic Tac Toe game for Android, iOS, web and desktop, built
 with Flutter and Material 3.
 
+**Play it in the browser:** https://samruddhi66.github.io/flutter-tic-tac-toe/
+
+The web version is built by GitHub Actions and published to GitHub Pages on every
+push to `main`.
+
 ## Features
 
 - Local two-player game on one device, X always starts
@@ -21,6 +26,8 @@ lib/
 test/
   game_logic_test.dart  # Rules unit tests
   widget_test.dart      # Plays a full round through the UI
+.github/workflows/
+  deploy-web.yml     # Builds the web game and deploys it to GitHub Pages
 ```
 
 ## Running it
