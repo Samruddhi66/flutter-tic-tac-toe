@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import 'game_logic.dart';
+import 'sound/game_sound.dart';
 
 void main() {
   runApp(const TicTacToeApp());
@@ -317,8 +319,10 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   late Match _match;
   late final ComputerOpponent? _computer;
+  final GameSound _sound = GameSound();
   Timer? _computerTimer;
   bool _computerThinking = false;
+  bool _soundOn = true;
 
   @override
   void initState() {
@@ -344,10 +348,31 @@ class _GamePageState extends State<GamePage> {
   bool get _isComputerTurn =>
       _computer != null && !_match.isOver && _computer.isTurn(_match.round);
 
+  void _toggleSound() {
+    setState(() {
+      _soundOn = !_soundOn;
+      _sound.enabled = _soundOn;
+    });
+  }
+
+  void _playSounds() {
+    final TicTacToe round = _match.round;
+    if (_match.isOver) {
+      _sound.matchWin();
+    } else if (round.status == GameStatus.won) {
+      _sound.win();
+    } else if (round.status == GameStatus.draw) {
+      _sound.draw();
+    } else {
+      _sound.tap();
+    }
+  }
+
   void _play(int index) {
     if (_computerThinking || _isComputerTurn) return;
     if (!_match.play(index)) return;
     setState(() {});
+    _playSounds();
     _scheduleComputerMove();
   }
 
@@ -366,6 +391,7 @@ class _GamePageState extends State<GamePage> {
         _computerThinking = false;
         if (move != null) _match.play(move);
       });
+      _playSounds();
     });
   }
 
@@ -425,6 +451,14 @@ class _GamePageState extends State<GamePage> {
         centerTitle: true,
         actions: <Widget>[
           IconButton(
+            key: const ValueKey<String>('sound-toggle'),
+            tooltip: _soundOn ? 'Mute sounds' : 'Unmute sounds',
+            onPressed: _toggleSound,
+            icon: Icon(
+              _soundOn ? Icons.volume_up_outlined : Icons.volume_off_outlined,
+            ),
+          ),
+          IconButton(
             tooltip: 'New match',
             onPressed: () {
               _computerTimer?.cancel();
@@ -468,7 +502,25 @@ class _GamePageState extends State<GamePage> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 260),
+                      transitionBuilder: (
+                        Widget child,
+                        Animation<double> animation,
+                      ) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: Tween<double>(begin: 0.94, end: 1)
+                                .animate(
+                                  CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOut,
+                                  ),
+                                ),
+                            child: child,
+                          ),
+                        );
+                      },
                       child: Text(
                         _statusText,
                         key: ValueKey<String>(_statusText),
@@ -540,13 +592,16 @@ class _GamePageState extends State<GamePage> {
         ? colors.onPrimaryContainer
         : (mark == Player.x ? colors.primary : colors.tertiary);
 
-    return AnimatedContainer(
+    final Widget cell = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       margin: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: colors.outlineVariant, width: 1.5),
+        border: Border.all(
+          color: isWinning ? colors.primary : colors.outlineVariant,
+          width: isWinning ? 2 : 1.5,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -555,15 +610,65 @@ class _GamePageState extends State<GamePage> {
           borderRadius: BorderRadius.circular(18),
           onTap: playable ? () => _play(index) : null,
           child: Center(
-            child: Text(
-              mark == null ? '' : _match.markFor(mark),
-              style: TextStyle(
-                fontSize: 52,
-                fontWeight: FontWeight.w800,
-                color: markColor,
-              ),
-            ),
+            child: mark == null
+                ? const SizedBox.shrink()
+                : _MarkChip(
+                    key: ValueKey<String>(
+                      'mark-$index-${mark == Player.x ? 'x' : 'o'}',
+                    ),
+                    text: _match.markFor(mark),
+                    color: markColor,
+                  ),
           ),
+        ),
+      ),
+    );
+
+    if (!isWinning) return cell;
+
+    // One soft pulse on the winning line when a round ends.
+    return TweenAnimationBuilder<double>(
+      key: ValueKey<String>('win-pulse-$index-${_match.playedRounds}'),
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 750),
+      curve: Curves.easeInOut,
+      builder: (BuildContext context, double value, Widget? child) {
+        final double pulse = math.sin(value * math.pi);
+        return Transform.scale(scale: 1 + 0.05 * pulse, child: child);
+      },
+      child: cell,
+    );
+  }
+}
+
+/// The X or O mark, popping in when it is placed.
+class _MarkChip extends StatelessWidget {
+  const _MarkChip({super.key, required this.text, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.3, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutBack,
+      builder: (BuildContext context, double value, Widget? child) {
+        return Transform.scale(
+          scale: value,
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: child,
+          ),
+        );
+      },
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 52,
+          fontWeight: FontWeight.w800,
+          color: color,
         ),
       ),
     );
@@ -680,11 +785,23 @@ class _ScoreTile extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        Text(
-          '$value',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w800,
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 240),
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return ScaleTransition(
+              scale: Tween<double>(begin: 1.4, end: 1).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+              ),
+              child: FadeTransition(opacity: animation, child: child),
+            );
+          },
+          child: Text(
+            '$value',
+            key: ValueKey<int>(value),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
