@@ -1,4 +1,4 @@
-name: Deploy web game to GitHub Pages
+name: Build the game and deploy it to GitHub Pages
 
 on:
   push:
@@ -20,26 +20,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - name: Generate the web platform folder
-        run: |
-          flutter create --project-name tic_tac_toe --platforms=web /tmp/webapp
-          cp -R /tmp/webapp/web .
-
-      - name: Set the page title
-        run: |
-          sed -i 's|<title>tic_tac_toe</title>|<title>Tic Tac Toe</title>|' web/index.html
-          sed -i 's|"name": "tic_tac_toe"|"name": "Tic Tac Toe"|; s|"short_name": "tic_tac_toe"|"short_name": "Tic Tac Toe"|' web/manifest.json
-
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Build the Android release APK
+        run: |
+          flutter create --project-name tic_tac_toe --platforms=android .
+          sed -i 's|android:label="tic_tac_toe"|android:label="Tic Tac Toe"|' android/app/src/main/AndroidManifest.xml
+          flutter build apk --release
+
       - name: Build the web release
-        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+        run: |
+          flutter create --project-name tic_tac_toe --platforms=web /tmp/webapp
+          cp -R /tmp/webapp/web .
+          sed -i 's|<title>tic_tac_toe</title>|<title>Tic Tac Toe</title>|' web/index.html
+          sed -i 's|"name": "tic_tac_toe"|"name": "Tic Tac Toe"|; s|"short_name": "tic_tac_toe"|"short_name": "Tic Tac Toe"|' web/manifest.json
+          flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+
+      - name: Put the APK on the site so it can be downloaded
+        run: cp build/app/outputs/flutter-apk/app-release.apk build/web/tic-tac-toe.apk
 
       - uses: actions/upload-pages-artifact@v3
         with:
