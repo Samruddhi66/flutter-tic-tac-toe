@@ -323,6 +323,7 @@ class _GamePageState extends State<GamePage> {
   Timer? _computerTimer;
   bool _computerThinking = false;
   bool _soundOn = true;
+  bool _resultDialogShown = false;
 
   @override
   void initState() {
@@ -373,6 +374,7 @@ class _GamePageState extends State<GamePage> {
     if (!_match.play(index)) return;
     setState(() {});
     _playSounds();
+    _maybeShowResult();
     _scheduleComputerMove();
   }
 
@@ -392,11 +394,85 @@ class _GamePageState extends State<GamePage> {
         if (move != null) _match.play(move);
       });
       _playSounds();
+      _maybeShowResult();
     });
+  }
+
+  /// Opens the winner popup once the round (or the match) is decided.
+  void _maybeShowResult() {
+    if (_resultDialogShown || _match.round.isPlaying) return;
+    _resultDialogShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showResultDialog();
+    });
+  }
+
+  Future<void> _showResultDialog() async {
+    final bool matchOver = _match.isOver;
+    final Player? winner = matchOver ? _match.winner : _match.round.winner;
+    final ThemeData theme = Theme.of(context);
+
+    final String title = winner == null
+        ? (matchOver ? 'Match drawn' : 'Round ${_match.playedRounds} drawn')
+        : '${_match.nameFor(winner)} wins!';
+    final String subtitle = matchOver
+        ? 'Final score ${_match.xScore} – ${_match.oScore}'
+        : 'Round ${_match.playedRounds} of ${_match.totalRounds} · '
+            '${_match.xScore} – ${_match.oScore}';
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          key: const ValueKey<String>('result-dialog'),
+          icon: Icon(
+            winner == null
+                ? Icons.handshake_outlined
+                : Icons.emoji_events_rounded,
+            size: 44,
+            color: winner == null
+                ? theme.colorScheme.onSurfaceVariant
+                : theme.colorScheme.primary,
+          ),
+          title: Text(
+            title,
+            key: const ValueKey<String>('result-dialog-title'),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          content: Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              key: const ValueKey<String>('result-dialog-action'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _primaryAction();
+              },
+              child: Text(matchOver ? 'Play again' : 'Next round'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _primaryAction() {
     _computerTimer?.cancel();
+    _resultDialogShown = false;
     setState(() {
       _computerThinking = false;
       if (_match.isOver) {

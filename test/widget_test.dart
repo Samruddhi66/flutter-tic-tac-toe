@@ -46,11 +46,61 @@ void main() {
     expect(find.text('Sam wins the match 1–0'), findsOneWidget);
     expect(find.text('Match complete'), findsOneWidget);
 
-    await tester.tap(find.text('Play again'));
+    // The winner popup takes over the screen with the final result.
+    expect(find.byKey(const ValueKey<String>('result-dialog')), findsOneWidget);
+    expect(find.text('Sam wins!'), findsOneWidget);
+    expect(find.text('Final score 1 – 0'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('result-dialog-action')),
+    );
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const ValueKey<String>('result-dialog')), findsNothing);
     expect(find.text("Sam's turn"), findsOneWidget);
     expect(find.text('0'), findsWidgets);
+  });
+
+  testWidgets('winning a round shows the winner popup',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 2200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const TicTacToeApp());
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('x-name-field')),
+      'Sam',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('o-name-field')),
+      'Riya',
+    );
+
+    // Two rounds, so the first win is only a round win.
+    await tester.tap(find.byKey(const ValueKey<String>('rounds-minus')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Start game'));
+    await tester.pumpAndSettle();
+
+    for (final int index in <int>[0, 3, 1, 4, 2]) {
+      await tester.tap(find.byKey(ValueKey<String>('cell-$index')));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.byKey(const ValueKey<String>('result-dialog')), findsOneWidget);
+    expect(find.text('Sam wins!'), findsOneWidget);
+    expect(find.text('Round 1 of 2 · 1 – 0'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('result-dialog-action')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey<String>('result-dialog')), findsNothing);
+    expect(find.text('Round 2 of 2'), findsOneWidget);
   });
 
   testWidgets('one player can play against the computer on hard',
